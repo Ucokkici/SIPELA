@@ -1,0 +1,80 @@
+# =====================================================================
+# SIPELA — Production Docker Compose (VPS Server)
+# =====================================================================
+
+services:
+  # 1. Database PostgreSQL Production
+  postgres:
+    image: postgres:16-alpine
+    container_name: sipela-prod-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: sipela
+      POSTGRES_PASSWORD: sipela@ucik#ocok90
+      POSTGRES_DB: sipeladb
+    ports:
+      - "5432:5432"
+    volumes:
+      - sipela_prod_pgdata:/var/lib/postgresql/data
+    networks:
+      - sipela-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sipela -d sipeladb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis Cache & BullMQ Queue Production
+  redis:
+    image: redis:7-alpine
+    container_name: sipela-prod-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - sipela_prod_redisdata:/data
+    networks:
+      - sipela-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 3. Aplikasi Backend NestJS (SIPELA API)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sipela-prod-backend
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://sipela:sipela%40ucik%23ocok90@postgres:5432/sipeladb?schema=public
+      NODE_ENV: production
+      PORT: 3001
+      CORS_ORIGIN: "*"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: sipela_super_secret_jwt_prod_key_2026
+      JWT_EXPIRES_IN: 1d
+      JWT_REFRESH_SECRET: sipela_super_secret_refresh_prod_key_2026
+      JWT_REFRESH_EXPIRES_IN: 7d
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sipela-network
+
+networks:
+  sipela-network:
+    driver: bridge
+
+volumes:
+  sipela_prod_pgdata:
+    driver: local
+  sipela_prod_redisdata:
+    driver: local

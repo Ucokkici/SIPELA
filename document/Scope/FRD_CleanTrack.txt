@@ -1,0 +1,178 @@
+Functional Requirement / Specification Document (FRD/FSD)
+
+CleanTrack — Spesifikasi Fungsional per Modul
+
+Versi 2.0 — mencakup modul verifikasi foto, verifikasi berat, dan
+tracking kurir.
+
+1. Modul Tenant & Cabang
+
+-   FR-1.1: Sistem harus mengisolasi seluruh data (order, customer,
+    employee, dsb.) berdasarkan tenant_id sehingga satu tenant tidak
+    dapat mengakses data tenant lain.
+
+-   FR-1.2: Owner/Admin dapat membuat, mengubah, dan menonaktifkan
+    cabang (branch) dalam tenant miliknya.
+
+-   FR-1.3: Setiap cabang memiliki koordinat lokasi (long, lat) yang
+    digunakan untuk kalkulasi ongkos kirim.
+
+-   FR-1.4: Satu cabang wajib ditandai sebagai cabang utama
+    (is_main_branch) per tenant.
+
+2. Modul Order
+
+-   FR-2.1: Customer dapat membuat order dengan dua metode: walk-in
+    (langsung di outlet) atau pickup dari rumah (memerlukan alamat
+    pickup).
+
+-   FR-2.2: Untuk order pickup dari rumah, customer dapat (opsional)
+    mengisi estimated_weight; jika tidak diisi, weight_status otomatis
+    'not_required' hingga kasir menimbang.
+
+-   FR-2.3: Order memiliki status yang berjalan linear: pending → pickup
+    → received → process → delivery → done, dengan kemungkinan berpindah
+    ke cancelled dari status manapun sebelum process dimulai.
+
+-   FR-2.4: Setiap perubahan status order dicatat pada order_status_log,
+    termasuk siapa yang mengubah (changed_by), waktu, dan catatan
+    opsional.
+
+-   FR-2.5: Sistem menghitung subtotal_amount dari order_item,
+    mengurangi discount_amount (dari discount atau membership aktif),
+    dan menghasilkan total_amount final.
+
+-   FR-2.6: Jika berat aktual berbeda dari estimasi setelah ditimbang,
+    sistem menghitung ulang subtotal_amount dan total_amount berdasarkan
+    actual_weight sebelum meminta konfirmasi pelanggan.
+
+3. Modul Verifikasi Foto
+
+-   FR-3.1: Saat kurir mengubah status order menjadi 'pickup', sistem
+    mewajibkan upload minimal satu foto sebelum transisi status diterima
+    (photo_required = true pada order_status_log).
+
+-   FR-3.2: Saat kasir mengubah status order menjadi 'received', sistem
+    mewajibkan foto bukti timbangan/kondisi laundry sebelum transisi
+    status diterima.
+
+-   FR-3.3: Saat kurir mengubah status order menjadi 'delivery' selesai
+    (menuju 'done'), sistem mewajibkan foto bukti serah terima ke
+    pelanggan.
+
+-   FR-3.4: Backend menolak (HTTP 422) permintaan perubahan status pada
+    titik-titik wajib foto apabila field photo_url tidak disertakan.
+
+-   FR-3.5: Foto disimpan pada object storage (Cloudflare R2/S3) dan
+    URL-nya disimpan pada order_status_log.photo_url.
+
+4. Modul Verifikasi Berat
+
+-   FR-4.1: Kasir menginput actual_weight saat order berstatus
+    'received'.
+
+-   FR-4.2: Sistem membandingkan actual_weight terhadap estimated_weight
+    menggunakan toleransi persentase yang dikonfigurasi per tenant
+    (tenant.weight_tolerance_percent, default 10%).
+
+-   FR-4.3: Jika selisih berat berada dalam toleransi, weight_status
+    diset 'matched' dan order dapat langsung dilanjutkan ke status
+    'process' oleh kasir/operator.
+
+-   FR-4.4: Jika selisih berat di luar toleransi, weight_status diset
+    'mismatched', order ditahan pada status 'received', dan sistem
+    mengirim pesan WhatsApp interaktif ke pelanggan berisi berat baru
+    dan total baru untuk dikonfirmasi.
+
+-   FR-4.5: Ketika pelanggan mengonfirmasi melalui WhatsApp atau
+    aplikasi, weight_status diperbarui menjadi 'confirmed',
+    weight_confirmed_at dicatat, dan order dapat dilanjutkan ke status
+    'process'.
+
+-   FR-4.6: Jika pelanggan menolak konfirmasi, order dapat dibatalkan
+    (status 'cancelled') atau ditangani manual oleh operator sesuai
+    kebijakan tenant.
+
+-   FR-4.7: Untuk order walk-in, weight_status default 'not_required'
+    karena penimbangan dan kesepakatan berat terjadi langsung di outlet
+    tanpa perlu estimasi awal.
+
+5. Modul Kurir & Tracking Lokasi
+
+-   FR-5.1: Operator dapat menugaskan kurir (internal atau eksternal) ke
+    sebuah order untuk pickup dan/atau delivery.
+
+-   FR-5.2: Aplikasi kurir mengirim ping lokasi (long, lat) secara
+    berkala selama order berstatus 'pickup' atau 'delivery', disimpan
+    pada courier_location_log.
+
+-   FR-5.3: Customer dapat melihat posisi kurir secara real-time selama
+    proses pickup atau delivery berlangsung melalui peta pada aplikasi.
+
+-   FR-5.4: Riwayat lokasi kurir tetap tersimpan meskipun order terkait
+    telah dihapus/diarsipkan (order_id pada log lokasi menjadi NULL,
+    bukan ikut terhapus).
+
+6. Modul Pembayaran
+
+-   FR-6.1: Sistem mendukung metode pembayaran tunai (cash) di outlet
+    dan pembayaran digital melalui payment gateway (Midtrans atau
+    Xendit).
+
+-   FR-6.2: Untuk pembayaran digital, sistem membuat charge/invoice dan
+    menyimpan reference_no dari gateway sebagai referensi unik.
+
+-   FR-6.3: Sistem menerima webhook dari payment gateway untuk
+    memperbarui status pembayaran (pending → success/failed) secara
+    otomatis.
+
+-   FR-6.4: Setelah pembayaran berhasil, order.payment_status diperbarui
+    menjadi 'paid' dan notifikasi dikirim ke pelanggan.
+
+7. Modul Notifikasi
+
+-   FR-7.1: Sistem mengirim notifikasi WhatsApp pada momen: order
+    dikonfirmasi, kurir ditugaskan, berat tidak sesuai (perlu
+    konfirmasi), pembayaran berhasil, dan laundry siap diantar.
+
+-   FR-7.2: Sistem mengirim push notification (FCM) ke aplikasi customer
+    dan kurir pada setiap perubahan status order yang relevan bagi
+    masing-masing peran.
+
+-   FR-7.3: Seluruh pengiriman notifikasi diproses melalui job queue
+    (BullMQ) agar tidak memblokir request utama.
+
+8. Modul Membership & Diskon
+
+-   FR-8.1: Customer dapat memiliki satu atau lebih membership aktif per
+    cabang dengan masa berlaku (start_date, expired_date).
+
+-   FR-8.2: Diskon dapat berupa persentase atau nominal tetap, berlaku
+    di tingkat cabang atau seluruh tenant.
+
+-   FR-8.3: Saat order dibuat, sistem menerapkan diskon dan/atau
+    membership aktif yang berlaku pada perhitungan discount_amount.
+
+9. Ringkasan Peran & Hak Akses
+
+  --------------- -------------------------------------------------------
+  Peran           Hak Akses Utama
+
+  Customer        Buat order, lihat status & lokasi kurir, konfirmasi
+                  berat via WA/app, bayar.
+
+  Kurir           Ubah status pickup/delivery (dengan foto wajib), kirim
+                  update lokasi.
+
+  Kasir           Ubah status received (dengan foto & input
+                  actual_weight), proses pembayaran walk-in.
+
+  Operator        Tugaskan kurir, pantau seluruh order & antrian per
+                  status, tangani kasus mismatch.
+
+  Admin           Kelola data master: cabang, layanan, diskon,
+                  membership, pegawai.
+
+  Owner           Akses penuh seluruh cabang dalam tenant, laporan,
+                  pengaturan toleransi berat.
+  --------------- -------------------------------------------------------

@@ -1,0 +1,296 @@
+API Specification / Contract
+
+CleanTrack — REST API & WebSocket Events
+
+Versi 2.0 — mencakup endpoint verifikasi foto, verifikasi berat, dan
+live tracking kurir.
+
+1. Konvensi Umum
+
+-   Base URL: https://api.cleantrack.id/v1
+
+-   Autentikasi: header Authorization: Bearer <access_token> (JWT).
+
+-   Semua request/response body menggunakan JSON, timestamp format ISO
+    8601.
+
+-   Semua endpoint yang mengubah data tenant wajib menyertakan konteks
+    tenant_id dari JWT, bukan dari body request.
+
+2. Format Error Standar
+
+{
+
+"success": false,
+
+"error": {
+
+"code": "PHOTO_REQUIRED",
+
+"message": "Foto bukti wajib diunggah untuk perubahan status ini",
+
+"details": { "field": "photo_url" }
+
+}
+
+}
+
+  --------------- -------------------------------------------------------
+  HTTP Status     Kapan Digunakan
+
+  400             Body request tidak valid / gagal validasi schema.
+
+  401             Token tidak ada atau tidak valid.
+
+  403             Akses ditolak (IDOR/lintas tenant, atau role tidak
+                  berwenang).
+
+  404             Resource tidak ditemukan.
+
+  422             Aturan bisnis dilanggar, mis. foto wajib belum
+                  diunggah, berat belum diisi.
+
+  429             Rate limit terlampaui.
+  --------------- -------------------------------------------------------
+
+3. Auth
+
+POST /auth/login
+
+Login employee atau customer, mengembalikan access & refresh token.
+
+Request body:
+
+{ "email": "kasir@cabang1.com", "password": "•••••" }
+
+Response 200/201:
+
+{ "success": true, "data": { "access_token": "...", "refresh_token":
+"...", "role": "kasir" } }
+
+POST /auth/refresh
+
+Memperbarui access token menggunakan refresh token.
+
+Request body:
+
+{ "refresh_token": "..." }
+
+Response 200/201:
+
+{ "success": true, "data": { "access_token": "..." } }
+
+4. Order
+
+POST /orders
+
+Membuat order baru (walk-in atau pickup dari rumah).
+
+Request body:
+
+{
+
+"branch_id": 1,
+
+"customer_id": 45,
+
+"pickup_address_id": 12,
+
+"estimated_weight": 5.5,
+
+"items": [{ "service_id": 3, "quantity": 1 }]
+
+}
+
+Response 200/201:
+
+{
+
+"success": true,
+
+"data": {
+
+"id": 1029, "status": "pending", "weight_status": "pending",
+
+"estimated_weight": 5.5, "total_amount": 45000
+
+}
+
+}
+
+GET /orders/{id}
+
+Mengambil detail order termasuk item, status log, dan pembayaran.
+
+Response 200/201:
+
+{ "success": true, "data": { "id": 1029, "status": "received",
+"weight_status": "mismatched", ... } }
+
+PATCH /orders/{id}/status
+
+Mengubah status order. Untuk status 'pickup', 'received', dan 'delivery'
+(final), field photo_url wajib.
+
+Request body:
+
+{
+
+"status": "pickup",
+
+"photo_url": "https://cdn.cleantrack.id/proof/pickup_1029.jpg",
+
+"note": "Diambil di depan rumah pelanggan"
+
+}
+
+Response 200/201:
+
+{ "success": true, "data": { "id": 1029, "status": "pickup" } }
+
+Response 422 jika foto wajib tidak disertakan:
+
+{
+
+"success": false,
+
+"error": { "code": "PHOTO_REQUIRED", "message": "Foto bukti wajib
+diunggah untuk status pickup" }
+
+}
+
+5. Verifikasi Berat
+
+PATCH /orders/{id}/weight
+
+Kasir menginput berat aktual saat order berstatus 'received'. Sistem
+otomatis membandingkan dengan estimasi dan memperbarui weight_status.
+
+Request body:
+
+{
+
+"actual_weight": 6.8,
+
+"photo_url": "https://cdn.cleantrack.id/proof/weight_1029.jpg"
+
+}
+
+Response 200/201:
+
+{
+
+"success": true,
+
+"data": {
+
+"id": 1029, "actual_weight": 6.8, "estimated_weight": 5.5,
+
+"weight_status": "mismatched",
+
+"total_amount": 54000,
+
+"notification_sent": true
+
+}
+
+}
+
+POST /orders/{id}/weight/confirm
+
+Konfirmasi pelanggan atas selisih berat (dipicu dari tombol WhatsApp
+interaktif atau in-app).
+
+Request body:
+
+{ "confirmed": true }
+
+Response 200/201:
+
+{ "success": true, "data": { "id": 1029, "weight_status": "confirmed",
+"weight_confirmed_at": "2026-08-29T10:15:00Z" } }
+
+6. Kurir & Tracking Lokasi
+
+PATCH /orders/{id}/assign-courier
+
+Operator menugaskan kurir ke sebuah order.
+
+Request body:
+
+{ "courier_id": 8 }
+
+Response 200/201:
+
+{ "success": true, "data": { "id": 1029, "courier_id": 8 } }
+
+POST /couriers/{id}/location
+
+Kurir mengirim update lokasi terkini (dipanggil berkala oleh aplikasi
+kurir).
+
+Request body:
+
+{ "order_id": 1029, "long": 106.827153, "lat": -6.175392 }
+
+Response 200/201:
+
+{ "success": true }
+
+GET /orders/{id}/courier-location
+
+Mengambil lokasi terakhir kurir untuk order tertentu (fallback jika
+WebSocket tidak tersedia).
+
+Response 200/201:
+
+{ "success": true, "data": { "long": 106.827153, "lat": -6.175392,
+"updated_at": "2026-08-29T10:20:00Z" } }
+
+7. Pembayaran
+
+POST /orders/{id}/payments
+
+Membuat charge pembayaran digital (Midtrans/Xendit) untuk order.
+
+Request body:
+
+{ "method": "qris" }
+
+Response 200/201:
+
+{ "success": true, "data": { "reference_no": "INV-2026-1029",
+"payment_url": "https://checkout.xendit.co/..." } }
+
+POST /webhooks/payment
+
+Endpoint penerima webhook dari payment gateway (Midtrans/Xendit) untuk
+memperbarui status pembayaran.
+
+Request body:
+
+{ "reference_no": "INV-2026-1029", "status": "success", "paid_at":
+"2026-08-29T10:30:00Z" }
+
+Response 200/201:
+
+{ "success": true }
+
+8. WebSocket Events
+
+  -------------------------- ----------------------- ---------------------------
+  Event                      Payload                 Deskripsi
+
+  courier.location.updated   { order_id, courier_id, Dikirim ke room order
+                             long, lat }             tertentu saat kurir
+                                                     mengirim ping lokasi baru.
+
+  order.status.changed       { order_id, status,     Dikirim ke customer &
+                             changed_by }            operator saat status order
+                                                     berubah.
+
+  order.weight.mismatch      { order_id,             Dikirim saat weight_status
+                             estimated_weight,       berubah menjadi
+                             actual_weight,          'mismatched', memicu UI
+                             total_amount }          konfirmasi di app customer.
+  -------------------------- ----------------------- ---------------------------

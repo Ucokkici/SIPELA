@@ -1,0 +1,407 @@
+// =====================================================================
+// CLEANTRACK — schema.prisma (PostgreSQL)
+// Sumber kebenaran: ERD SIPELA (DrawSQL) + seluruh keputusan desain sesi ini
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================
+// 1. TENANT & STRUKTUR ORGANISASI
+// =========================
+
+model Tenant {
+  id                       BigInt    @id @default(autoincrement())
+  name                     String    @db.VarChar(150)
+  ownerName                String    @map("owner_name") @db.VarChar(150)
+  phone                    String    @db.VarChar(20)
+  email                    String    @unique @db.VarChar(150)
+  planType                 String    @map("plan_type") @default("basic") @db.VarChar(30)
+  status                   String    @default("active") @db.VarChar(20)
+  // toleransi berat default per tenant (%), dipakai saat bandingkan estimated_weight vs actual_weight
+  weightTolerancePercent   Decimal   @map("weight_tolerance_percent") @default(10.00) @db.Decimal(5, 2)
+  createdAt                DateTime  @map("created_at") @default(now())
+  updatedAt                DateTime  @map("updated_at") @default(now())
+  deletedAt                DateTime? @map("deleted_at")
+
+  branches           Branch[]
+  employees          Employee[]
+  couriers           Courier[]
+  customers          Customer[]
+  memberships        Membership[]
+  discounts          Discount[]
+  services           Service[]
+  tenantCourierRules TenantCourierRules[]
+  orders             Order[]
+
+  @@map("tenant")
+}
+
+model Branch {
+  id           BigInt    @id @default(autoincrement())
+  tenantId     BigInt    @map("tenant_id")
+  name         String    @db.VarChar(150)
+  location     String?   @db.VarChar(255)
+  email        String?   @db.VarChar(150)
+  phone        String?   @db.VarChar(20)
+  long         Decimal?  @db.Decimal(9, 6)
+  lat          Decimal?  @db.Decimal(9, 6)
+  isMainBranch Boolean   @map("is_main_branch") @default(false)
+  createdAt    DateTime  @map("created_at") @default(now())
+  updatedAt    DateTime  @map("updated_at") @default(now())
+  deletedAt    DateTime? @map("deleted_at")
+
+  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  couriers           Courier[]
+  customers          Customer[]
+  memberships        Membership[]
+  discounts          Discount[]
+  services           Service[]
+  employees          Employee[]
+  tenantCourierRules TenantCourierRules[]
+  orders             Order[]
+
+  @@index([tenantId], name: "idx_branch_tenant")
+  @@map("branch")
+}
+
+model Employee {
+  id        BigInt    @id @default(autoincrement())
+  tenantId  BigInt    @map("tenant_id")
+  branchId  BigInt    @map("branch_id")
+  fullName  String    @map("full_name") @db.VarChar(150)
+  email     String    @unique @db.VarChar(150)
+  phone     String?   @db.VarChar(20)
+  password  String    @db.VarChar(255)
+  photo     String?   @db.VarChar(255)
+  role      String    @db.VarChar(30) // 'admin','staff','kasir','operator','owner'
+  status    String    @default("active") @db.VarChar(20)
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @default(now())
+  deletedAt DateTime? @map("deleted_at")
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch          Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  courierProfile  Courier?
+  statusLogs      OrderStatusLog[]
+
+  @@index([tenantId, branchId], name: "idx_employee_tenant_branch")
+  @@map("employee")
+}
+
+// =========================
+// 2. COURIER
+// =========================
+
+model Courier {
+  id           BigInt    @id @default(autoincrement())
+  tenantId     BigInt    @map("tenant_id")
+  branchId     BigInt?   @map("branch_id")
+  employeeId   BigInt?   @unique @map("employee_id") // NULL = kurir eksternal/freelance
+  name         String    @db.VarChar(150)
+  phone        String    @db.VarChar(20)
+  vehicleType  String?   @map("vehicle_type") @db.VarChar(30)
+  plateNumber  String?   @map("plate_number") @db.VarChar(20)
+  status       String    @default("active") @db.VarChar(20) // 'active','offline','suspended'
+  createdAt    DateTime  @map("created_at") @default(now())
+  updatedAt    DateTime  @map("updated_at") @default(now())
+  deletedAt    DateTime? @map("deleted_at")
+
+  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?               @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  employee      Employee?             @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  orders        Order[]
+  locationLogs  CourierLocationLog[]
+
+  @@index([tenantId, branchId], name: "idx_courier_tenant_branch")
+  @@map("courier")
+}
+
+// =========================
+// 3. CUSTOMER & ALAMAT
+// =========================
+
+model Customer {
+  id        BigInt    @id @default(autoincrement())
+  tenantId  BigInt    @map("tenant_id")
+  branchId  BigInt    @map("branch_id")
+  name      String    @db.VarChar(150)
+  phone     String    @db.VarChar(20)
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @default(now())
+  deletedAt DateTime? @map("deleted_at")
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  addresses   CustomerAddress[]
+  memberships Membership[]
+  orders      Order[]
+
+  @@index([tenantId, branchId], name: "idx_customer_tenant_branch")
+  @@map("customer")
+}
+
+model CustomerAddress {
+  id         BigInt   @id @default(autoincrement())
+  customerId BigInt   @map("customer_id")
+  location   String   @db.VarChar(255)
+  label      String?  @db.VarChar(50)
+  note       String?  @db.VarChar(255)
+  long       Decimal? @db.Decimal(9, 6)
+  lat        Decimal? @db.Decimal(9, 6)
+  isDefault  Boolean  @map("is_default") @default(false)
+  createdAt  DateTime @map("created_at") @default(now())
+  updatedAt  DateTime @map("updated_at") @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  pickupOrders    Order[]  @relation("PickupAddress")
+  deliveryOrders  Order[]  @relation("DeliveryAddress")
+
+  @@index([customerId], name: "idx_customer_address_customer")
+  @@map("customer_address")
+}
+
+// =========================
+// 4. MEMBERSHIP & DISCOUNT
+// =========================
+
+model Membership {
+  id           BigInt   @id @default(autoincrement())
+  branchId     BigInt   @map("branch_id")
+  tenantId     BigInt   @map("tenant_id")
+  customerId   BigInt   @map("customer_id")
+  name         String   @db.VarChar(100)
+  type         String   @db.VarChar(30)
+  isActive     Boolean  @map("is_active") @default(true)
+  percent      Decimal? @db.Decimal(5, 2)
+  startDate    DateTime @map("start_date") @db.Date
+  expiredDate  DateTime @map("expired_date") @db.Date
+  price        Decimal  @db.Decimal(14, 2)
+  createdAt    DateTime @map("created_at") @default(now())
+  updatedAt    DateTime @map("updated_at") @default(now())
+
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([customerId], name: "idx_membership_customer")
+  @@index([tenantId, branchId], name: "idx_membership_tenant_branch")
+  @@map("membership")
+}
+
+model Discount {
+  id           BigInt   @id @default(autoincrement())
+  tenantId     BigInt   @map("tenant_id")
+  branchId     BigInt?  @map("branch_id")
+  name         String   @db.VarChar(100)
+  typeDiscount String   @map("type_discount") @db.VarChar(30) // 'percent' / 'nominal'
+  price        Decimal? @db.Decimal(14, 2)
+  percent      Decimal? @db.Decimal(5, 2)
+  isActive     Boolean  @map("is_active") @default(true)
+  createdAt    DateTime @map("created_at") @default(now())
+  updatedAt    DateTime @map("updated_at") @default(now())
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([tenantId, branchId], name: "idx_discount_tenant_branch")
+  @@map("discount")
+}
+
+// =========================
+// 5. SERVICE
+// =========================
+
+model Service {
+  id        BigInt   @id @default(autoincrement())
+  tenantId  BigInt   @map("tenant_id")
+  branchId  BigInt   @map("branch_id")
+  name      String   @db.VarChar(100)
+  price     Decimal  @default(0) @db.Decimal(14, 2)
+  isActive  Boolean  @map("is_active") @default(true)
+  createdAt DateTime @map("created_at") @default(now())
+  updatedAt DateTime @map("updated_at") @default(now())
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([tenantId, branchId], name: "idx_service_tenant_branch")
+  @@map("service")
+}
+
+// =========================
+// 6. ATURAN ONGKOS KIRIM
+// =========================
+
+model TenantCourierRules {
+  id           BigInt   @id @default(autoincrement())
+  tenantId     BigInt   @map("tenant_id")
+  branchId     BigInt   @map("branch_id")
+  pricingType  String   @map("pricing_type") @db.VarChar(20) // 'flat','distance','both'
+  flatFee      Decimal? @map("flat_fee") @default(0) @db.Decimal(14, 2)
+  pickupFee    Decimal? @map("pickup_fee") @default(0) @db.Decimal(14, 2)
+  deliveryFee  Decimal? @map("delivery_fee") @default(0) @db.Decimal(14, 2)
+  bothFee      Decimal? @map("both_fee") @default(0) @db.Decimal(14, 2)
+  createdAt    DateTime @map("created_at") @default(now())
+  updatedAt    DateTime @map("updated_at") @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, branchId], name: "idx_courier_rules_tenant_branch")
+  @@map("tenant_courier_rules")
+}
+
+// =========================
+// 7. ORDER & ITEM
+// =========================
+// status         : 'pending' | 'pickup' | 'received' | 'process' | 'delivery' | 'done' | 'cancelled'
+// weightStatus   : 'not_required' | 'pending' | 'matched' | 'mismatched' | 'confirmed'
+// paymentStatus  : 'unpaid' | 'partial' | 'paid' | 'refunded'
+
+model Order {
+  id                 BigInt    @id @default(autoincrement())
+  tenantId           BigInt    @map("tenant_id")
+  branchId           BigInt    @map("branch_id")
+  customerId         BigInt    @map("customer_id")
+  courierId          BigInt?   @map("courier_id")
+  pickupAddressId    BigInt?   @map("pickup_address_id")
+  deliveryAddressId  BigInt?   @map("delivery_address_id")
+  discountId         BigInt?   @map("discount_id")
+  membershipId       BigInt?   @map("membership_id")
+  distance           Decimal?  @db.Decimal(8, 2)
+  courierFee         Decimal   @map("courier_fee") @default(0) @db.Decimal(14, 2)
+  shippingFee        Decimal   @map("shipping_fee") @default(0) @db.Decimal(14, 2)
+  estimatedWeight    Decimal?  @map("estimated_weight") @db.Decimal(8, 2)
+  actualWeight       Decimal?  @map("actual_weight") @db.Decimal(8, 2)
+  weightStatus       String    @map("weight_status") @default("not_required") @db.VarChar(20)
+  weightConfirmedAt  DateTime? @map("weight_confirmed_at")
+  subtotalAmount     Decimal   @map("subtotal_amount") @default(0) @db.Decimal(14, 2)
+  discountAmount     Decimal   @map("discount_amount") @default(0) @db.Decimal(14, 2)
+  totalAmount        Decimal   @map("total_amount") @default(0) @db.Decimal(14, 2)
+  paymentStatus      String    @map("payment_status") @default("unpaid") @db.VarChar(20)
+  status             String    @default("pending") @db.VarChar(20)
+  createdAt          DateTime  @map("created_at") @default(now())
+  updatedAt          DateTime  @map("updated_at") @default(now())
+
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch           Branch               @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  customer         Customer             @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  courier          Courier?             @relation(fields: [courierId], references: [id], onDelete: SetNull)
+  pickupAddress    CustomerAddress?     @relation("PickupAddress", fields: [pickupAddressId], references: [id])
+  deliveryAddress  CustomerAddress?     @relation("DeliveryAddress", fields: [deliveryAddressId], references: [id])
+  discount         Discount?            @relation(fields: [discountId], references: [id])
+  membership       Membership?          @relation(fields: [membershipId], references: [id])
+  items            OrderItem[]
+  statusLogs       OrderStatusLog[]
+  payments         Payment[]
+  locationLogs     CourierLocationLog[]
+
+  @@index([tenantId, branchId], name: "idx_order_tenant_branch")
+  @@index([customerId], name: "idx_order_customer")
+  @@index([courierId], name: "idx_order_courier")
+  @@index([status], name: "idx_order_status")
+  @@index([weightStatus], name: "idx_order_weight_status")
+  @@map("order")
+}
+
+model OrderItem {
+  id        BigInt   @id @default(autoincrement())
+  orderId   BigInt   @map("order_id")
+  serviceId BigInt   @map("service_id")
+  price     Decimal  @db.Decimal(14, 2)
+  quantity  Decimal  @default(1) @db.Decimal(8, 2)
+  subtotal  Decimal  @db.Decimal(14, 2)
+  notes     String?  @db.VarChar(255)
+  createdAt DateTime @map("created_at") @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@index([orderId], name: "idx_order_item_order")
+  @@index([serviceId], name: "idx_order_item_service")
+  @@map("order_item")
+}
+
+// =========================
+// 8. LOG STATUS ORDER (+ FOTO VERIFIKASI)
+// =========================
+// photoUrl/photoRequired dipakai saat status -> 'pickup' (kurir), 'received' (kasir), 'delivery selesai' (kurir)
+
+model OrderStatusLog {
+  id             BigInt   @id @default(autoincrement())
+  orderId        BigInt   @map("order_id")
+  status         String   @db.VarChar(20)
+  changedBy      BigInt?  @map("changed_by")
+  note           String?  @db.VarChar(255)
+  photoUrl       String?  @map("photo_url") @db.VarChar(255)
+  photoRequired  Boolean  @map("photo_required") @default(false)
+  createdAt      DateTime @map("created_at") @default(now())
+
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedByUser  Employee? @relation(fields: [changedBy], references: [id])
+
+  @@index([orderId], name: "idx_order_status_log_order")
+  @@index([changedBy], name: "idx_order_status_log_changed_by")
+  @@map("order_status_log")
+}
+
+// =========================
+// 9. PEMBAYARAN
+// =========================
+
+model Payment {
+  id           BigInt    @id @default(autoincrement())
+  orderId      BigInt    @map("order_id")
+  method       String    @db.VarChar(30) // 'cash','transfer','qris','ewallet', dst
+  amount       Decimal   @db.Decimal(14, 2)
+  status       String    @default("pending") @db.VarChar(20) // 'pending','success','failed','refunded'
+  referenceNo  String?   @unique @map("reference_no") @db.VarChar(100)
+  paidAt       DateTime? @map("paid_at")
+  createdAt    DateTime  @map("created_at") @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId], name: "idx_payment_order")
+  @@map("payment")
+}
+
+// =========================
+// 10. LOG LOKASI KURIR (live tracking)
+// =========================
+
+model CourierLocationLog {
+  id        BigInt   @id @default(autoincrement())
+  courierId BigInt   @map("courier_id")
+  orderId   BigInt?  @map("order_id")
+  long      Decimal  @db.Decimal(9, 6)
+  lat       Decimal  @db.Decimal(9, 6)
+  createdAt DateTime @map("created_at") @default(now())
+
+  courier Courier @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([courierId, createdAt], name: "idx_courier_location_courier")
+  @@map("courier_location_log")
+}
+
+// =====================================================================
+// CATATAN MIGRASI MANUAL (tidak didukung native oleh Prisma schema):
+// 1. CHECK constraint utk order.weight_status:
+//    ALTER TABLE "order" ADD CONSTRAINT chk_weight_status
+//      CHECK (weight_status IN ('not_required','pending','matched','mismatched','confirmed'));
+//    -> tambahkan lewat migration.sql manual setelah `prisma migrate dev`,
+//       atau pakai Prisma `@@check` jika sudah stabil di versi Prisma yang dipakai.
+// 2. Payment.referenceNo sudah @unique — di Postgres, UNIQUE index otomatis
+//    mengizinkan banyak NULL, jadi perilaku "partial unique" sudah otomatis
+//    tercapai tanpa perlu raw SQL tambahan.
+// =====================================================================

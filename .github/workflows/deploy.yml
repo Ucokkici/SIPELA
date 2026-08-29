@@ -1,0 +1,72 @@
+name: SIPELA CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  # =================================================================
+  # 1. TEST & BUILD JOB
+  # =================================================================
+  test:
+    name: Run Unit Tests & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run Test Suite (11 Test Suites)
+        run: npm test
+
+      - name: Build Application
+        run: npm run build
+
+  # =================================================================
+  # 2. DEPLOYMENT JOB TO VPS VIA SSH
+  # =================================================================
+  deploy:
+    name: Deploy to VPS Server
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute Remote SSH Commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            echo "🚀 Memulai proses deployment di VPS..."
+            
+            # Navigasi ke direktori projek
+            cd ~/sipela || cd /var/www/sipela || cd /root/sipela
+            
+            # Tarik kode terbaru dari GitHub
+            git fetch --all
+            git reset --hard origin/main || git reset --hard origin/master
+            
+            # Rebuild & jalankan container produksi
+            docker compose -f docker-compose.prod.yml up -d --build
+            
+            # Tunggu database siap, lalu jalankan migrasi database
+            sleep 5
+            docker exec -i sipela-prod-backend npx prisma migrate deploy || true
+            
+            echo "✅ Deployment SIPELA Backend berhasil diselesaikan!"

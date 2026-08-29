@@ -1,0 +1,209 @@
+Product Requirement Document (PRD)
+
+CleanTrack — Multi-Tenant SaaS Laundry Management Platform
+
+Versi 2.0 — mencakup fitur verifikasi foto, verifikasi berat laundry,
+dan live tracking kurir.
+
+1. Latar Belakang
+
+CleanTrack adalah platform SaaS multi-tenant yang memungkinkan pemilik
+bisnis laundry (dari skala satu outlet hingga jaringan banyak cabang)
+mengelola operasional harian mereka: penerimaan order, tracking status
+cuci, penugasan kurir pickup/delivery, pembayaran digital, dan
+komunikasi otomatis ke pelanggan lewat WhatsApp.
+
+Masalah utama yang ingin diselesaikan: proses manual/berbasis kertas di
+outlet laundry menyebabkan kesalahan pencatatan berat cuci,
+ketidakjelasan status order bagi pelanggan, sulitnya melacak kurir, dan
+potensi perselisihan (dispute) antara kasir dan pelanggan terkait
+kondisi/berat laundry saat serah terima.
+
+2. Tujuan Produk
+
+-   Mendigitalkan seluruh alur order laundry dari pemesanan hingga
+    pembayaran dalam satu sistem multi-tenant.
+
+-   Menyediakan transparansi penuh antara pelanggan, kurir, dan kasir
+    melalui bukti foto di setiap tahap serah-terima.
+
+-   Mengeliminasi dispute berat laundry lewat mekanisme estimasi vs
+    aktual yang terverifikasi dan disetujui pelanggan.
+
+-   Memberikan visibilitas real-time posisi kurir kepada pelanggan dan
+    operator.
+
+-   Mengotomatiskan notifikasi (WhatsApp & push) di setiap perubahan
+    status order dan pembayaran.
+
+3. Target Pengguna & Peran
+
+  ------------------- ---------------------------------------------------
+  Peran               Deskripsi Singkat
+
+  Customer            Memesan layanan laundry (pickup dari rumah atau
+                      walk-in ke outlet), memantau status order,
+                      membayar, dan mengonfirmasi berat jika terjadi
+                      selisih.
+
+  Kurir               Menjemput dan mengantar laundry, wajib mengambil
+                      foto bukti di setiap pickup/delivery, dan mengirim
+                      update lokasi.
+
+  Kasir               Menerima laundry di outlet, menimbang berat aktual,
+                      memfoto bukti timbangan, memproses pembayaran
+                      walk-in.
+
+  Operator            Mengelola order harian, menugaskan kurir, memantau
+                      antrian kerja per status, menangani kasus mismatch
+                      berat.
+
+  Admin               Mengelola data master cabang, layanan, diskon,
+                      membership, dan pegawai dalam satu tenant.
+
+  Owner               Pemilik tenant; memiliki akses penuh ke seluruh
+                      cabang, laporan keuangan, dan pengaturan bisnis.
+  ------------------- ---------------------------------------------------
+
+4. Ruang Lingkup (Scope)
+
+4.1 Termasuk dalam Scope
+
+-   Manajemen tenant multi-cabang (branch) dengan isolasi data per
+    tenant.
+
+-   Order laundry: walk-in dan pickup-dari-rumah, dengan input layanan
+    (service) dan estimasi berat.
+
+-   Alur status order: pending → pickup → received → process → delivery
+    → done, dengan cabang cancelled.
+
+-   Verifikasi foto wajib pada 3 titik: kurir saat pickup, kasir saat
+    menerima & menimbang, kurir saat delivery.
+
+-   Verifikasi berat: estimasi dari pelanggan vs aktual dari kasir,
+    dengan toleransi yang dapat dikonfigurasi per tenant, dan alur
+    konfirmasi via WhatsApp jika terjadi selisih di luar toleransi.
+
+-   Live tracking lokasi kurir selama order dalam status pickup atau
+    delivery.
+
+-   Pembayaran digital (Midtrans/Xendit: QRIS, e-wallet, transfer bank)
+    dan pembayaran tunai di outlet.
+
+-   Notifikasi otomatis via WhatsApp Cloud API dan push notification
+    (FCM).
+
+-   Membership dan diskon per pelanggan/cabang.
+
+-   Kalkulasi ongkos kirim otomatis berbasis jarak (Google Distance
+    Matrix) atau aturan flat per tenant.
+
+4.2 Di Luar Scope (Fase Ini)
+
+-   Manajemen inventaris bahan baku (deterjen, plastik, dsb.).
+
+-   Payroll dan absensi pegawai.
+
+-   Aplikasi loyalti pihak ketiga di luar sistem membership internal.
+
+-   Multi-currency / ekspansi luar Indonesia.
+
+5. Fitur Utama
+
+  ------------------- ---------------------------------------------------
+  Modul               Fitur Kunci
+
+  Order Management    Buat order, pilih layanan, input estimasi berat,
+                      tracking status real-time, riwayat order.
+
+  Verifikasi Foto     Upload foto wajib di titik pickup, received, dan
+                      delivery; validasi backend menolak perubahan status
+                      tanpa foto jika ditandai wajib.
+
+  Verifikasi Berat    Input actual_weight oleh kasir, perbandingan
+                      otomatis dengan estimasi, notifikasi WA + tombol
+                      konfirmasi jika mismatch.
+
+  Kurir & Tracking    Penugasan kurir, update status pickup/delivery,
+                      live location ping, riwayat rute.
+
+  Pembayaran          Integrasi Midtrans/Xendit, pembayaran tunai,
+                      riwayat transaksi, webhook status.
+
+  Notifikasi          WhatsApp Cloud API (nota, update status, konfirmasi
+                      berat) dan push notification in-app (FCM).
+
+  Membership & Diskon Paket membership per pelanggan, diskon
+                      persen/nominal per cabang atau tenant.
+
+  Multi-Tenant Admin  Manajemen cabang, pegawai, layanan, dan aturan
+                      ongkir per tenant.
+  ------------------- ---------------------------------------------------
+
+6. Alur Utama (High-Level Flow)
+
+Order Pickup dari Rumah:
+
+-   Customer memilih cabang, layanan, dan mengisi estimasi berat
+    laundry, lalu memilih alamat pickup.
+
+-   Sistem menghitung ongkir otomatis berdasarkan jarak dan aturan
+    tenant.
+
+-   Kurir ditugaskan, melakukan pickup, wajib foto bukti pengambilan →
+    status berubah menjadi pickup.
+
+-   Kasir menerima laundry di outlet, menimbang berat aktual, memfoto
+    bukti timbangan → status berubah menjadi received.
+
+-   Sistem membandingkan berat aktual vs estimasi. Jika sesuai (dalam
+    toleransi), order lanjut otomatis ke status process. Jika tidak
+    sesuai, sistem mengirim WhatsApp ke pelanggan untuk konfirmasi total
+    baru sebelum lanjut.
+
+-   Setelah proses cuci selesai, kurir mengantar kembali laundry dengan
+    foto bukti delivery → status delivery lalu done.
+
+-   Notifikasi WhatsApp dan push dikirim otomatis di setiap perubahan
+    status dan saat pembayaran berhasil.
+
+7. Metrik Keberhasilan (Success Metrics)
+
+  --------------------------- -------------------------------------------
+  Metrik                      Target Indikatif
+
+  Tingkat dispute berat       Turun signifikan dibanding proses manual,
+  laundry                     terukur lewat rasio order berstatus
+                              mismatched yang terselesaikan tanpa
+                              komplain lanjutan.
+
+  Waktu rata-rata konfirmasi  Pelanggan merespons notifikasi WhatsApp
+  mismatch berat              dalam waktu singkat setelah dikirim.
+
+  Kepatuhan verifikasi foto   Hampir seluruh order memiliki foto lengkap
+                              di titik pickup, received, dan delivery
+                              sesuai aturan wajib.
+
+  Adopsi tenant               Jumlah tenant aktif dan jumlah order yang
+                              diproses per bulan meningkat konsisten.
+
+  Waktu proses order          Durasi dari pending hingga done semakin
+  end-to-end                  konsisten dan dapat diprediksi per cabang.
+  --------------------------- -------------------------------------------
+
+8. Risiko & Asumsi
+
+-   Asumsi: seluruh kurir dan kasir memiliki akses perangkat
+    (smartphone/tablet) untuk mengambil foto dan mengirim update status.
+
+-   Risiko: keterlambatan approval template pesan WhatsApp Business
+    dapat menunda peluncuran notifikasi otomatis — mitigasi dengan
+    mengajukan approval template di awal fase development.
+
+-   Risiko: akurasi GPS kurir di area padat/dalam ruangan dapat
+    menyebabkan lokasi tidak presisi — mitigasi dengan interval ping
+    yang wajar dan fallback ke update manual status.
+
+-   Asumsi: toleransi selisih berat default 10% dapat disesuaikan oleh
+    masing-masing tenant sesuai kebijakan bisnis mereka.

@@ -1,0 +1,46 @@
+# ============================================
+# CleanTrack — Docker Compose (Development)
+# ============================================
+# PostgreSQL 16 + Redis 7 untuk development lokal
+
+
+services:
+  # --- PostgreSQL 16 ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: cleantrack-postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: cleantrack
+      POSTGRES_PASSWORD: cleantrack_pass
+      POSTGRES_DB: cleantrack_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cleantrack -d cleantrack_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Redis 7 (untuk BullMQ queue — dipakai mulai Task 6) ---
+  redis:
+    image: redis:7-alpine
+    container_name: cleantrack-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
