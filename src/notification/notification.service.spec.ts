@@ -62,8 +62,8 @@ describe('NotificationModule Tests', () => {
     jest.clearAllMocks();
   });
 
-  describe('1. NotificationService — Queueing Job', () => {
-    it('harus menambahkan job mismatch ke antrian BullMQ dengan payload yang tepat', async () => {
+  describe('1. NotificationService — Queueing & Fallback Mode', () => {
+    it('harus menambahkan job mismatch ke antrian BullMQ dengan payload yang tepat saat Redis aktif', async () => {
       const payload = {
         order_id: 1029,
         customer_phone: '08123456789',
@@ -79,6 +79,7 @@ describe('NotificationModule Tests', () => {
 
       expect(result.success).toBe(true);
       expect(result.job_id).toBe('job-123');
+      expect(result.mode).toBe('queue');
       expect(mockQueue.add).toHaveBeenCalledWith(
         JOB_SEND_WEIGHT_MISMATCH_WA,
         payload,
@@ -86,6 +87,32 @@ describe('NotificationModule Tests', () => {
           attempts: 3,
         }),
       );
+    });
+
+    it('harus fallback ke direct call jika REDIS_ENABLED=false', async () => {
+      mockConfigService.get.mockImplementation((key) => {
+        if (key === 'REDIS_ENABLED') return 'false';
+        return 'test-val';
+      });
+
+      const payload = {
+        order_id: 1030,
+        customer_phone: '08123456789',
+        customer_name: 'Ahmad Fauzi',
+        estimated_weight: 5.0,
+        actual_weight: 7.5,
+        total_amount: 75000,
+      };
+
+      const spy = jest.spyOn(whatsAppService, 'sendWeightMismatchInteractiveMessage');
+
+      const result = await notificationService.queueWeightMismatchNotification(
+        payload,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.mode).toBe('direct');
+      expect(spy).toHaveBeenCalledWith(payload);
     });
   });
 

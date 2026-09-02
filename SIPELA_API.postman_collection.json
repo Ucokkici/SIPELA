@@ -1,0 +1,560 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "SIPELA Laundry — API Collection (v2.0.0)",
+    "description": "Koleksi Postman lengkap untuk seluruh endpoint REST API Platform SaaS Manajemen Laundry SIPELA v2.0.0.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Autentikasi (Auth)",
+      "item": [
+        {
+          "name": "Login (Kasir)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.success && response.data && response.data.access_token) {",
+                  "    pm.environment.set('access_token', response.data.access_token);",
+                  "    pm.environment.set('refresh_token', response.data.refresh_token);",
+                  "    console.log('✅ Access token & refresh token berhasil disimpan ke environment!');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"kasir@sipela.id\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login (Owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.success && response.data && response.data.access_token) {",
+                  "    pm.environment.set('access_token', response.data.access_token);",
+                  "    pm.environment.set('refresh_token', response.data.refresh_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@sipela.id\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Profil Akun Aktif (Get Me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Pesanan (Orders)",
+      "item": [
+        {
+          "name": "Buat Order Baru (Pickup Rumah)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.success && response.data && response.data.id) {",
+                  "    pm.environment.set('order_id', response.data.id);",
+                  "    console.log('✅ Order ID diset:', response.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branch_id\": 1,\n  \"customer_id\": 1,\n  \"pickup_address_id\": 1,\n  \"delivery_address_id\": 1,\n  \"estimated_weight\": 5.0,\n  \"items\": [\n    {\n      \"service_id\": 1,\n      \"quantity\": 5,\n      \"notes\": \"Cuci bersih pakaian harian\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Buat Order Walk-in (Outlet)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branch_id\": 1,\n  \"customer_id\": 1,\n  \"discount_id\": 1,\n  \"items\": [\n    {\n      \"service_id\": 1,\n      \"quantity\": 3\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Tugaskan Kurir ke Order",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courier_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/assign-courier",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "assign-courier"]
+            }
+          }
+        },
+        {
+          "name": "Update Status: PICKUP (Wajib Foto)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"pickup\",\n  \"photo_url\": \"https://storage.sipela.id/proof/pickup_01.jpg\",\n  \"note\": \"Cucian diambil kurir dari rumah pelanggan\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Status: RECEIVED (Wajib Foto)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"received\",\n  \"photo_url\": \"https://storage.sipela.id/proof/received_01.jpg\",\n  \"note\": \"Cucian tiba di outlet Tebet\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Status: PROCESS",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"process\",\n  \"note\": \"Mulai diproses di mesin cuci\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Status: DELIVERY (Wajib Foto)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"delivery\",\n  \"photo_url\": \"https://storage.sipela.id/proof/delivery_start.jpg\",\n  \"note\": \"Kurir sedang mengantar cucian\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Status: DONE",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\",\n  \"note\": \"Pesanan selesai diterima pelanggan\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Get Detail Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Verifikasi Berat (Weight)",
+      "item": [
+        {
+          "name": "Input Berat Timbangan (Matched)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actual_weight\": 5.2,\n  \"photo_url\": \"https://storage.sipela.id/scale/scale_01.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/weight",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "weight"]
+            }
+          }
+        },
+        {
+          "name": "Input Berat Timbangan (Mismatch)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actual_weight\": 8.5,\n  \"photo_url\": \"https://storage.sipela.id/scale/scale_02.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/weight",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "weight"]
+            }
+          }
+        },
+        {
+          "name": "Konfirmasi Berat Pelanggan (Setuju)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirmed\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/weight/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "weight", "confirm"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Kurir & Live Tracking",
+      "item": [
+        {
+          "name": "Kurir Kirim Ping GPS Lokasi",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": {{order_id}},\n  \"long\": 106.853120,\n  \"lat\": -6.226540\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/couriers/1/location",
+              "host": ["{{base_url}}"],
+              "path": ["couriers", "1", "location"]
+            }
+          }
+        },
+        {
+          "name": "Get Lokasi Terakhir Kurir (Fallback HTTP)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/courier-location",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "courier-location"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Pembayaran (Payments)",
+      "item": [
+        {
+          "name": "Bayar Tunai Kasir (Cash - Instant Lunas)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"cash\",\n  \"amount\": 51600\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/payments",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "payments"]
+            }
+          }
+        },
+        {
+          "name": "Bayar Digital QRIS (Pending)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"qris\",\n  \"amount\": 51600\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/payments",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "payments"]
+            }
+          }
+        },
+        {
+          "name": "Get Riwayat Pembayaran Order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders/{{order_id}}/payments",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "{{order_id}}", "payments"]
+            }
+          }
+        },
+        {
+          "name": "Webhook Payment Gateway Callback",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference_no\": \"QRIS_1029\",\n  \"status\": \"success\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/webhooks/payment",
+              "host": ["{{base_url}}"],
+              "path": ["webhooks", "payment"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Master Data (CRUD)",
+      "item": [
+        {
+          "name": "Get Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services",
+              "host": ["{{base_url}}"],
+              "path": ["services"]
+            }
+          }
+        },
+        {
+          "name": "Create Service",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branch_id\": 1,\n  \"name\": \"Cuci Gorden / Karpet\",\n  \"price\": 15000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/services",
+              "host": ["{{base_url}}"],
+              "path": ["services"]
+            }
+          }
+        },
+        {
+          "name": "Get Branches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/branches",
+              "host": ["{{base_url}}"],
+              "path": ["branches"]
+            }
+          }
+        },
+        {
+          "name": "Get Employees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/employees",
+              "host": ["{{base_url}}"],
+              "path": ["employees"]
+            }
+          }
+        },
+        {
+          "name": "Get Discounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/discounts",
+              "host": ["{{base_url}}"],
+              "path": ["discounts"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Laporan & Analitik (Reports)",
+      "item": [
+        {
+          "name": "Laporan Omzet & Pendapatan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/revenue",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "revenue"]
+            }
+          }
+        },
+        {
+          "name": "Laporan Performa Antar Cabang",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/branch-performance",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "branch-performance"]
+            }
+          }
+        },
+        {
+          "name": "Statistik Kinerja Kurir",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/courier-statistics",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "courier-statistics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Health Check",
+      "item": [
+        {
+          "name": "Health Check Status",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

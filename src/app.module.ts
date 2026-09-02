@@ -23,13 +23,22 @@ import { ConfigService } from '@nestjs/config';
       envFilePath: '.env',
     }),
 
-    // BullMQ Redis Connection
+    // BullMQ Redis Connection (Graceful & Optional)
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
           host: config.get<string>('REDIS_HOST', 'localhost'),
           port: config.get<number>('REDIS_PORT', 6379),
+          lazyConnect: true,
+          maxRetriesPerRequest: null,
+          enableOfflineQueue: false,
+          retryStrategy: (times) => {
+            if (config.get<string>('REDIS_ENABLED') === 'false' || times > 3) {
+              return null;
+            }
+            return Math.min(times * 100, 2000);
+          },
         },
       }),
     }),
