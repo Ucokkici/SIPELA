@@ -20,9 +20,7 @@ export class TenantGuard implements CanActivate {
 
     // 1. Ekstrak tenant_id dari user terautentikasi (JWT payload) atau header tenant
     const userTenantId =
-      request.user?.tenant_id ||
-      request.user?.tenantId ||
-      request.headers['x-tenant-id'];
+      request.user?.tenant_id || request.user?.tenantId || request.headers['x-tenant-id'];
 
     // Jika endpoint bersifat publik atau belum diproteksi JWT, loloskan
     if (!userTenantId) {
@@ -36,10 +34,7 @@ export class TenantGuard implements CanActivate {
       request.params?.tenant_id ||
       request.query?.tenant_id;
 
-    if (
-      targetTenantId &&
-      String(targetTenantId) !== String(userTenantId)
-    ) {
+    if (targetTenantId && String(targetTenantId) !== String(userTenantId)) {
       this.logger.warn(
         `🚨 [IDOR_DETECTED] Akses lintas tenant ditolak! User Tenant: ${userTenantId}, Target Tenant: ${targetTenantId}`,
       );
@@ -52,8 +47,15 @@ export class TenantGuard implements CanActivate {
       });
     }
 
-    // Menyimpan konteks tenant yang tervalidasi ke request
-    request.tenantId = BigInt(userTenantId);
+    // 3. Menyimpan konteks tenant yang tervalidasi ke request
+    // PENGAMANAN: Konversi ke BigInt hanya jika berupa karakter angka murni
+    const tenantStr = String(userTenantId);
+    if (/^\d+$/.test(tenantStr)) {
+      request.tenantId = BigInt(tenantStr);
+    } else {
+      request.tenantId = userTenantId;
+    }
+
     return true;
   }
 }
