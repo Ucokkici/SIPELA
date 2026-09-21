@@ -5,18 +5,39 @@ import {
   Patch,
   Param,
   Body,
+  Query,
+  UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { QueryOrderDto } from './dto/query-order.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 @ApiTags('Pesanan (Orders)')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('orders')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
+
+  /**
+   * Mengambil daftar pesanan (dengan filter status, branch, customer, search, pagination)
+   * GET /v1/orders
+   */
+  @ApiOperation({ summary: 'Mengambil daftar pesanan dengan filter & pagination' })
+  @ApiResponse({ status: 200, description: 'Daftar pesanan berhasil diambil' })
+  @Get()
+  async getOrders(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: QueryOrderDto,
+  ) {
+    return this.orderService.getOrders(user, query);
+  }
 
   /**
    * Membuat order baru (walk-in atau pickup)

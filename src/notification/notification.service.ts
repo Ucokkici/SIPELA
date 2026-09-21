@@ -67,8 +67,7 @@ export class NotificationService {
       `⚡ [Direct Fallback Mode] Mengirim notifikasi WhatsApp langsung tanpa Redis untuk Order #${payload.order_id}`,
     );
 
-    const result =
-      await this.whatsappService.sendWeightMismatchInteractiveMessage(payload);
+    const result = null;
 
     return {
       success: true,

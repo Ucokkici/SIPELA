@@ -10,6 +10,8 @@ import { PhotoVerificationService } from '../photo-verification/photo-verificati
 import { WeightVerificationService } from '../weight-verification/weight-verification.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { QueryOrderDto } from './dto/query-order.dto';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { OrderStatus } from './order.constants';
 import { WeightStatus } from '../weight-verification/weight-verification.constants';
 import { Prisma } from '@prisma/client';
@@ -349,6 +351,79 @@ export class OrderService {
     return {
       success: true,
       data: order,
+    };
+  }
+
+  /**
+   * Mengambil daftar pesanan dengan filter & pagination
+   */
+  async getOrders(user: JwtPayload, query: QueryOrderDto) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.OrderWhereInput = {
+      tenantId: BigInt(user.tenant_id),
+    };
+
+    if (user.type === 'customer') {
+      where.customerId = BigInt(user.sub);
+    } else if (query.customer_id) {
+      where.customerId = BigInt(query.customer_id);
+    }
+
+    if (query.branch_id) {
+      where.branchId = BigInt(query.branch_id);
+    } else if (user.branch_id && user.role !== 'owner' && user.role !== 'admin') {
+      where.branchId = BigInt(user.branch_id);
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.search) {
+      where.customer = {
+        OR: [
+          { name: { contains: query.search, mode: 'insensitive' } },
+          { phone: { contains: query.search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    const [total, orders] = await Promise.all([
+      this.prisma.order.count({ where }),
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          customer: true,
+          branch: true,
+          items: {
+            include: {
+              service: true,
+            },
+          },
+          statusLogs: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+          payments: true,
+        },
+      }),
+    ]);
+
+    return {
+      success: true,
+      meta: {
+        total,
+        page,
+        limit,
+        total_pages: Math.ceil(total / limit),
+      },
+      data: orders,
     };
   }
 }

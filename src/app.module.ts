@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { PaymentModule } from './payment/payment.module';
 import { MasterModule } from './master/master.module';
 import { ReportModule } from './report/report.module';
+import { CustomerModule } from './customer/customer.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 
@@ -72,6 +73,9 @@ import { ConfigService } from '@nestjs/config';
 
     // Report & Analytics Module
     ReportModule,
+
+    // Customer Module
+    CustomerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

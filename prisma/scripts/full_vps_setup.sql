@@ -347,11 +347,13 @@ ON CONFLICT ("id") DO NOTHING;
 -- Pegawai (Password: password123 -> $2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW)
 INSERT INTO "employee" ("id", "tenant_id", "branch_id", "full_name", "email", "password", "role", "status")
 VALUES 
-  (1, 1, 1, 'Hendra Wijaya (Owner)', 'owner@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'owner', 'active'),
-  (2, 1, 1, 'Siti Rahmawati (Admin)', 'admin@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'admin', 'active'),
-  (3, 1, 1, 'Rina Marlina (Kasir)', 'kasir@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'kasir', 'active'),
-  (4, 1, 1, 'Doni Pratama (Operator)', 'operator@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'operator', 'active'),
-  (5, 1, 1, 'Budi Santoso (Kurir)', 'kurir@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'staff', 'active')
+--   (1, 1, 1, 'Hendra Wijaya (Owner)', 'owner@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'owner', 'active'),
+--   (2, 1, 1, 'Siti Rahmawati (Admin)', 'admin@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'admin', 'active'),
+--   (3, 1, 1, 'Rina Marlina (Kasir)', 'kasir@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'kasir', 'active'),
+--   (4, 1, 1, 'Doni Pratama (Operator)', 'operator@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'operator', 'active'),
+--   (5, 1, 1, 'Budi Santoso (Kurir)', 'kurir@sipela.id', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'staff', 'active')
+  (6, 1, 1, 'dafa', 'dafa@sipela.id', 'dafa1234', 'admin', 'active')
+  
 ON CONFLICT ("id") DO NOTHING;
 
 -- Kurir

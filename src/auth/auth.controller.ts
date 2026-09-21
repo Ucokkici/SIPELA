@@ -14,10 +14,28 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
+import { CustomerService } from '../customer/customer.service';
+import { CreateCustomerDto } from '../customer/dto/create-customer.dto';
+
 @ApiTags('Autentikasi (Auth)')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly customerService: CustomerService,
+  ) {}
+
+  /**
+   * Pendaftaran mandiri pelanggan (Customer Registration)
+   * POST /v1/auth/register-customer
+   */
+  @Public()
+  @ApiOperation({ summary: 'Registrasi Mandiri Pelanggan (Customer)' })
+  @ApiResponse({ status: 201, description: 'Registrasi pelanggan berhasil' })
+  @Post('register-customer')
+  async registerCustomer(@Body() dto: CreateCustomerDto) {
+    return this.customerService.createCustomer(dto);
+  }
 
   /**
    * Login employee atau customer
