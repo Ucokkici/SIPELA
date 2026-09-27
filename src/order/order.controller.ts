@@ -16,6 +16,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 @ApiTags('Pesanan (Orders)')
@@ -43,6 +44,7 @@ export class OrderController {
    * Membuat order baru (walk-in atau pickup)
    * POST /v1/orders
    */
+  @Public()
   @ApiOperation({ summary: 'Membuat order baru (Walk-in atau Pickup)' })
   @ApiResponse({ status: 201, description: 'Order baru berhasil dibuat' })
   @Post()
