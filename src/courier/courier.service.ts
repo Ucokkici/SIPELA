@@ -93,10 +93,35 @@ export class CourierService {
       });
     }
 
-    // 2. Validasi kurir
-    const courier = await this.prisma.courier.findUnique({
-      where: { id: cid },
+    // 2. Validasi kurir (bisa berdasarkan ID Kurir atau ID Employee Kurir)
+    let courier = await this.prisma.courier.findFirst({
+      where: {
+        OR: [
+          { id: cid },
+          { employeeId: cid },
+        ],
+      },
     });
+
+    // Fallback: Jika belum ada di tabel courier tapi employee dengan role 'kurir' ditemukan
+    if (!courier) {
+      const employee = await this.prisma.employee.findFirst({
+        where: { id: cid, role: 'kurir' },
+      });
+
+      if (employee) {
+        courier = await this.prisma.courier.create({
+          data: {
+            tenantId: employee.tenantId,
+            branchId: employee.branchId,
+            employeeId: employee.id,
+            name: employee.fullName,
+            phone: employee.phone || '',
+            status: 'active',
+          },
+        });
+      }
+    }
 
     if (!courier) {
       throw new NotFoundException({
@@ -108,11 +133,11 @@ export class CourierService {
       });
     }
 
-    // 3. Update relasi kurir di order
+    // 3. Update relasi kurir di order menggunakan courier.id yang valid
     const updatedOrder = await this.prisma.order.update({
       where: { id: oid },
       data: {
-        courierId: cid,
+        courierId: courier.id,
         updatedAt: new Date(),
       },
     });

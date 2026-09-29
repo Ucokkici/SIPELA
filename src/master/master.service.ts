@@ -255,10 +255,27 @@ export class MasterService {
       },
     });
 
+    // Jika role employee adalah 'kurir', otomatis buatkan profile di tabel courier
+    let courierId: number | null = null;
+    if (dto.role === 'kurir') {
+      const courier = await this.prisma.courier.create({
+        data: {
+          tenantId: BigInt(tenantId),
+          branchId: BigInt(dto.branch_id),
+          employeeId: employee.id,
+          name: employee.fullName,
+          phone: dto.phone || '',
+          status: 'active',
+        },
+      });
+      courierId = Number(courier.id);
+    }
+
     return {
       success: true,
       data: {
         id: Number(employee.id),
+        courier_id: courierId,
         fullName: employee.fullName,
         email: employee.email,
         role: employee.role,
