@@ -29,16 +29,19 @@ import { ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
-          host: config.get<string>('REDIS_HOST', 'localhost'),
-          port: config.get<number>('REDIS_PORT', 6379),
+          host: config.get<string>('REDIS_HOST', 'cleantrack-redis'),
+          port: Number(config.get<number>('REDIS_PORT', 6379)),
           lazyConnect: true,
           maxRetriesPerRequest: null,
           enableOfflineQueue: false,
           retryStrategy: (times) => {
-            if (config.get<string>('REDIS_ENABLED') === 'false' || times > 3) {
-              return null;
+            if (config.get<string>('REDIS_ENABLED') === 'false') {
+              return 30000; // Jika redis disabled, jangan disconnect brutal tapi retry lama agar process tidak crash
             }
-            return Math.min(times * 100, 2000);
+            if (times > 10) {
+              return 10000;
+            }
+            return Math.min(times * 200, 2000);
           },
         },
       }),
