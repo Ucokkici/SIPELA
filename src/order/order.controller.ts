@@ -20,17 +20,17 @@ import { Public } from '../auth/decorators/public.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 @ApiTags('Pesanan (Orders)')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('orders')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   /**
    * Mengambil daftar pesanan (dengan filter status, branch, customer, search, pagination)
-   * GET /v1/orders
+   * GET /v1/orders - Khusus Kasir / Pegawai Terautentikasi
    */
-  @ApiOperation({ summary: 'Mengambil daftar pesanan dengan filter & pagination' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Mengambil daftar pesanan dengan filter & pagination (Kasir/Staff)' })
   @ApiResponse({ status: 200, description: 'Daftar pesanan berhasil diambil' })
   @Get()
   async getOrders(
@@ -42,10 +42,10 @@ export class OrderController {
 
   /**
    * Membuat order baru (walk-in atau pickup)
-   * POST /v1/orders
+   * POST /v1/orders - Terbuka untuk Guest / Pelanggan Landing Page & Kasir POS
    */
   @Public()
-  @ApiOperation({ summary: 'Membuat order baru (Walk-in atau Pickup)' })
+  @ApiOperation({ summary: 'Membuat order baru (Guest Landing Page / Kasir POS)' })
   @ApiResponse({ status: 201, description: 'Order baru berhasil dibuat' })
   @Post()
   async createOrder(@Body() dto: CreateOrderDto) {
@@ -54,8 +54,10 @@ export class OrderController {
 
   /**
    * Mengubah status order (dengan validasi foto wajib & state machine)
-   * PATCH /v1/orders/:id/status
+   * PATCH /v1/orders/:id/status - Khusus Kasir / Kurir Terautentikasi
    */
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Memperbarui status order (dengan verifikasi foto wajib & state machine)' })
   @ApiResponse({ status: 200, description: 'Status order berhasil diperbarui' })
   @ApiResponse({ status: 422, description: 'Transisi tidak valid atau foto wajib belum diunggah' })
@@ -68,10 +70,11 @@ export class OrderController {
   }
 
   /**
-   * Mengambil detail order
-   * GET /v1/orders/:id
+   * Mengambil detail order (Struk / Live Tracking Status)
+   * GET /v1/orders/:id - Terbuka untuk Pelanggan / Guest via Order ID
    */
-  @ApiOperation({ summary: 'Mengambil detail lengkap pesanan berdasarkan ID' })
+  @Public()
+  @ApiOperation({ summary: 'Mengambil detail lengkap pesanan / struk tracking berdasarkan ID' })
   @ApiResponse({ status: 200, description: 'Detail lengkap order' })
   @ApiResponse({ status: 404, description: 'Order tidak ditemukan' })
   @Get(':id')

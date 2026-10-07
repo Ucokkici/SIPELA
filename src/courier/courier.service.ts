@@ -106,7 +106,7 @@ export class CourierService {
     // Fallback: Jika belum ada di tabel courier tapi employee dengan role 'kurir' ditemukan
     if (!courier) {
       const employee = await this.prisma.employee.findFirst({
-        where: { id: cid, role: 'kurir' },
+        where: { id: cid, role: { in: ['kurir', 'Kurir', 'courier'] } },
       });
 
       if (employee) {
@@ -152,6 +152,42 @@ export class CourierService {
         id: Number(updatedOrder.id),
         courier_id: Number(updatedOrder.courierId),
       },
+    };
+  }
+
+  /**
+   * Mengambil daftar seluruh kurir aktif untuk dropdown penugasan
+   * Endpoint: GET /v1/couriers
+   */
+  async getCouriers(tenantId: number, branchId?: number) {
+    const where: Prisma.CourierWhereInput = {
+      tenantId: BigInt(tenantId),
+      status: 'active',
+      ...(branchId ? { branchId: BigInt(branchId) } : {}),
+    };
+
+    const couriers = await this.prisma.courier.findMany({
+      where,
+      orderBy: { id: 'asc' },
+      include: {
+        employee: true,
+        branch: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: couriers.map((c) => ({
+        id: Number(c.id),
+        employee_id: c.employeeId ? Number(c.employeeId) : null,
+        tenant_id: Number(c.tenantId),
+        branch_id: c.branchId ? Number(c.branchId) : null,
+        name: c.name,
+        phone: c.phone,
+        vehicle_type: c.vehicleType,
+        plate_number: c.plateNumber,
+        status: c.status,
+      })),
     };
   }
 

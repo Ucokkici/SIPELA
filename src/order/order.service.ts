@@ -53,20 +53,75 @@ export class OrderService {
 
     const tenantId = branch.tenantId;
 
-    // 2. Validasi Customer
-    const customer = await this.prisma.customer.findUnique({
-      where: { id: customerId },
-    });
+    // 2. Validasi atau Pembuatan Customer (Smart Resolution)
+    let customer: any = null;
+    let pickupAddressId: bigint | null = dto.pickup_address_id ? BigInt(dto.pickup_address_id) : null;
+    let deliveryAddressId: bigint | null = dto.delivery_address_id ? BigInt(dto.delivery_address_id) : null;
 
-    if (!customer) {
-      throw new NotFoundException({
-        success: false,
-        error: {
-          code: 'CUSTOMER_NOT_FOUND',
-          message: `Customer dengan ID ${dto.customer_id} tidak ditemukan`,
+    if (dto.customer_id) {
+      customer = await this.prisma.customer.findFirst({
+        where: { id: BigInt(dto.customer_id), tenantId: tenantId },
+      });
+
+      if (!customer) {
+        throw new NotFoundException({
+          success: false,
+          error: {
+            code: 'CUSTOMER_NOT_FOUND',
+            message: `Customer dengan ID ${dto.customer_id} tidak ditemukan pada tenant ini`,
+          },
+        });
+      }
+    } else {
+      if (!dto.customer_phone || !dto.customer_name) {
+        throw new BadRequestException({
+          success: false,
+          error: {
+            code: 'CUSTOMER_INFO_REQUIRED',
+            message: 'customer_id atau (customer_name dan customer_phone) wajib diisi',
+          },
+        });
+      }
+
+      const rawPhone = dto.customer_phone.replace(/[\s\-\(\)]/g, '');
+      const phone08 = rawPhone.startsWith('62') ? '0' + rawPhone.slice(2) : (rawPhone.startsWith('0') ? rawPhone : '0' + rawPhone);
+      const phone62 = rawPhone.startsWith('0') ? '62' + rawPhone.slice(1) : (rawPhone.startsWith('62') ? rawPhone : '62' + rawPhone);
+
+      customer = await this.prisma.customer.findFirst({
+        where: {
+          tenantId: tenantId,
+          phone: { in: [rawPhone, phone08, phone62] },
         },
       });
+
+      if (customer) {
+        this.logger.log(`Pelanggan lama ditemukan: #${customer.id} (${customer.name})`);
+      } else {
+        customer = await this.prisma.customer.create({
+          data: {
+            tenantId: tenantId,
+            branchId: branchId,
+            name: dto.customer_name.trim(),
+            phone: phone08,
+          },
+        });
+        this.logger.log(`Pelanggan baru otomatis dibuat: #${customer.id} (${customer.name})`);
+      }
+
+      if (dto.customer_address && dto.customer_address.trim()) {
+        const newAddress = await this.prisma.customerAddress.create({
+          data: {
+            customerId: customer.id,
+            location: dto.customer_address.trim(),
+            isDefault: true,
+          },
+        });
+        if (!pickupAddressId) pickupAddressId = newAddress.id;
+        if (!deliveryAddressId) deliveryAddressId = newAddress.id;
+      }
     }
+
+    const customerId = customer.id;
 
     // 3. Validasi & Kalkulasi Item Layanan
     let subtotalAmount = 0;
@@ -141,8 +196,8 @@ export class OrderService {
       },
     });
 
-    const isPickup = !!dto.pickup_address_id;
-    const isDelivery = !!dto.delivery_address_id;
+    const isPickup = !!pickupAddressId;
+    const isDelivery = !!deliveryAddressId;
 
     if (courierRules) {
       if (isPickup && isDelivery) {
@@ -171,8 +226,8 @@ export class OrderService {
           tenantId: tenantId,
           branchId: branchId,
           customerId: customerId,
-          pickupAddressId: dto.pickup_address_id ? BigInt(dto.pickup_address_id) : null,
-          deliveryAddressId: dto.delivery_address_id ? BigInt(dto.delivery_address_id) : null,
+          pickupAddressId: pickupAddressId,
+          deliveryAddressId: deliveryAddressId,
           discountId: dto.discount_id ? BigInt(dto.discount_id) : null,
           membershipId: dto.membership_id ? BigInt(dto.membership_id) : null,
           estimatedWeight: dto.estimated_weight ? new Prisma.Decimal(dto.estimated_weight) : null,

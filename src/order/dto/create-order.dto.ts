@@ -30,9 +30,21 @@ export class CreateOrderDto {
   @IsNumber({}, { message: 'branch_id harus berupa angka' })
   branch_id!: number;
 
-  @IsNotEmpty({ message: 'customer_id wajib diisi' })
+  @IsOptional()
   @IsNumber({}, { message: 'customer_id harus berupa angka' })
-  customer_id!: number;
+  customer_id?: number;
+
+  @IsOptional()
+  @IsString({ message: 'customer_name harus berupa string' })
+  customer_name?: string;
+
+  @IsOptional()
+  @IsString({ message: 'customer_phone harus berupa string' })
+  customer_phone?: string;
+
+  @IsOptional()
+  @IsString({ message: 'customer_address harus berupa string' })
+  customer_address?: string;
 
   @IsOptional()
   @IsNumber({}, { message: 'pickup_address_id harus berupa angka' })

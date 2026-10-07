@@ -28,9 +28,9 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
+import { Public } from '../auth/decorators/public.decorator';
+
 @ApiTags('Master Data (Services, Branches, Employees, Discounts)')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class MasterController {
   constructor(private readonly masterService: MasterService) {}
@@ -39,16 +39,22 @@ export class MasterController {
   // 1. LAYANAN (SERVICES)
   // ==========================================
 
-  @ApiOperation({ summary: 'Mendapatkan seluruh daftar katalog layanan laundry' })
+  @Public()
+  @ApiOperation({ summary: 'Mendapatkan seluruh daftar katalog layanan laundry (Publik & Internal)' })
   @ApiQuery({ name: 'branch_id', required: false, type: Number })
+  @ApiQuery({ name: 'tenant_id', required: false, type: Number })
   @Get('services')
   async getServices(
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser() user?: JwtPayload,
     @Query('branch_id') branchId?: number,
+    @Query('tenant_id') tenantIdQuery?: number,
   ) {
-    return this.masterService.getServices(user.tenant_id, branchId);
+    const tenantId = user?.tenant_id || (tenantIdQuery ? Number(tenantIdQuery) : undefined);
+    return this.masterService.getServices(tenantId, branchId);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @ApiOperation({ summary: 'Menambahkan paket layanan baru' })
   @Post('services')
@@ -59,6 +65,8 @@ export class MasterController {
     return this.masterService.createService(user.tenant_id, dto);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @ApiOperation({ summary: 'Memperbarui paket layanan' })
   @Patch('services/:id')
@@ -70,6 +78,8 @@ export class MasterController {
     return this.masterService.updateService(user.tenant_id, id, dto);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @ApiOperation({ summary: 'Menonaktifkan paket layanan' })
   @Delete('services/:id')
@@ -84,12 +94,20 @@ export class MasterController {
   // 2. CABANG (BRANCHES)
   // ==========================================
 
-  @ApiOperation({ summary: 'Mendapatkan seluruh cabang outlet laundry' })
+  @Public()
+  @ApiOperation({ summary: 'Mendapatkan seluruh cabang outlet laundry (Publik & Internal)' })
+  @ApiQuery({ name: 'tenant_id', required: false, type: Number })
   @Get('branches')
-  async getBranches(@CurrentUser() user: JwtPayload) {
-    return this.masterService.getBranches(user.tenant_id);
+  async getBranches(
+    @CurrentUser() user?: JwtPayload,
+    @Query('tenant_id') tenantIdQuery?: number,
+  ) {
+    const tenantId = user?.tenant_id || (tenantIdQuery ? Number(tenantIdQuery) : undefined);
+    return this.masterService.getBranches(tenantId);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner')
   @ApiOperation({ summary: 'Owner membuat cabang outlet baru' })
   @Post('branches')
@@ -100,6 +118,8 @@ export class MasterController {
     return this.masterService.createBranch(user.tenant_id, dto);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner')
   @ApiOperation({ summary: 'Owner memperbarui profil cabang outlet' })
   @Patch('branches/:id')
@@ -115,6 +135,8 @@ export class MasterController {
   // 3. PEGAWAI (EMPLOYEES)
   // ==========================================
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @ApiOperation({ summary: 'Mendapatkan seluruh pegawai di tenant' })
   @ApiQuery({ name: 'branch_id', required: false, type: Number })
@@ -126,6 +148,8 @@ export class MasterController {
     return this.masterService.getEmployees(user.tenant_id, branchId);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @ApiOperation({ summary: 'Mendaftarkan akun pegawai baru' })
   @Post('employees')
@@ -136,6 +160,8 @@ export class MasterController {
     return this.masterService.createEmployee(user.tenant_id, dto);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @ApiOperation({ summary: 'Memperbarui data pegawai' })
   @Patch('employees/:id')
@@ -147,6 +173,8 @@ export class MasterController {
     return this.masterService.updateEmployee(user.tenant_id, id, dto);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @ApiOperation({ summary: 'Menonaktifkan pegawai' })
   @Delete('employees/:id')
@@ -161,16 +189,22 @@ export class MasterController {
   // 4. DISKON (DISCOUNTS)
   // ==========================================
 
+  @Public()
   @ApiOperation({ summary: 'Mendapatkan seluruh daftar promo & diskon aktif' })
   @ApiQuery({ name: 'branch_id', required: false, type: Number })
+  @ApiQuery({ name: 'tenant_id', required: false, type: Number })
   @Get('discounts')
   async getDiscounts(
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser() user?: JwtPayload,
     @Query('branch_id') branchId?: number,
+    @Query('tenant_id') tenantIdQuery?: number,
   ) {
-    return this.masterService.getDiscounts(user.tenant_id, branchId);
+    const tenantId = user?.tenant_id || (tenantIdQuery ? Number(tenantIdQuery) : undefined);
+    return this.masterService.getDiscounts(tenantId, branchId);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @ApiOperation({ summary: 'Membuat promo diskon / voucher baru' })
   @Post('discounts')
@@ -181,6 +215,8 @@ export class MasterController {
     return this.masterService.createDiscount(user.tenant_id, dto);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'admin')
   @ApiOperation({ summary: 'Memperbarui promo diskon' })
   @Patch('discounts/:id')

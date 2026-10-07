@@ -22,10 +22,21 @@ export class MasterService {
   // 1. MASTER LAYANAN (SERVICES)
   // ==========================================
 
-  async getServices(tenantId: number, branchId?: number) {
+  async getServices(tenantId?: number, branchId?: number) {
+    let resolvedTenantId = tenantId;
+    if (!resolvedTenantId && branchId) {
+      const branch = await this.prisma.branch.findUnique({
+        where: { id: BigInt(branchId) },
+      });
+      if (branch) {
+        resolvedTenantId = Number(branch.tenantId);
+      }
+    }
+
     const where: Prisma.ServiceWhereInput = {
-      tenantId: BigInt(tenantId),
+      ...(resolvedTenantId ? { tenantId: BigInt(resolvedTenantId) } : {}),
       ...(branchId ? { branchId: BigInt(branchId) } : {}),
+      isActive: true,
     };
 
     const services = await this.prisma.service.findMany({
@@ -112,9 +123,13 @@ export class MasterService {
   // 2. MASTER CABANG (BRANCHES)
   // ==========================================
 
-  async getBranches(tenantId: number) {
+  async getBranches(tenantId?: number) {
+    const where: Prisma.BranchWhereInput = {
+      ...(tenantId ? { tenantId: BigInt(tenantId) } : {}),
+    };
+
     const branches = await this.prisma.branch.findMany({
-      where: { tenantId: BigInt(tenantId) },
+      where,
       orderBy: { id: 'asc' },
     });
 
@@ -336,10 +351,11 @@ export class MasterService {
   // 4. MASTER DISKON (DISCOUNTS)
   // ==========================================
 
-  async getDiscounts(tenantId: number, branchId?: number) {
+  async getDiscounts(tenantId?: number, branchId?: number) {
     const where: Prisma.DiscountWhereInput = {
-      tenantId: BigInt(tenantId),
+      ...(tenantId ? { tenantId: BigInt(tenantId) } : {}),
       ...(branchId ? { branchId: BigInt(branchId) } : {}),
+      isActive: true,
     };
 
     const discounts = await this.prisma.discount.findMany({
