@@ -55,7 +55,7 @@ async function bootstrap() {
   SwaggerModule.setup('v1/docs', app, document);
 
   const port = process.env.PORT || 3001;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`🚀 SIPELA API berjalan di http://localhost:${port}/v1`);
   console.log(`📚 Swagger UI Interaktif: http://localhost:${port}/v1/docs`);
 }
