@@ -265,6 +265,7 @@ export class MasterService {
         fullName: dto.fullName,
         email: dto.email,
         password: hashedPassword,
+        phone: dto.phone || null,
         role: dto.role,
         status: dto.status || 'active',
       },

@@ -33,14 +33,19 @@ export class CreateEmployeeDto {
 
   @ApiProperty({
     description: 'Role / jabatan pegawai',
-    enum: ['owner', 'admin', 'kasir', 'operator', 'staff'],
+    enum: ['owner', 'admin', 'kasir', 'operator', 'staff', 'kurir'],
     example: 'kasir',
   })
   @IsNotEmpty({ message: 'role wajib diisi' })
-  @IsIn(['owner', 'admin', 'kasir', 'operator', 'staff'], {
-    message: 'Role harus salah satu dari: owner, admin, kasir, operator, staff',
+  @IsIn(['owner', 'admin', 'kasir', 'operator', 'staff', 'kurir'], {
+    message: 'Role harus salah satu dari: owner, admin, kasir, operator, staff, kurir',
   })
   role!: string;
+
+  @ApiProperty({ description: 'Nomor telepon pegawai', example: '08123456789', required: false })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @ApiProperty({ description: 'Status akun', enum: ['active', 'suspended', 'inactive'], example: 'active', required: false })
   @IsOptional()

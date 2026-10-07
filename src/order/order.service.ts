@@ -33,7 +33,6 @@ export class OrderService {
    */
   async createOrder(dto: CreateOrderDto, tenantIdContext?: number) {
     const branchId = BigInt(dto.branch_id);
-    const customerId = BigInt(dto.customer_id);
 
     // 1. Validasi Cabang
     const branch = await this.prisma.branch.findUnique({
