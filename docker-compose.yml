@@ -8,26 +8,26 @@ services:
   # --- PostgreSQL 16 ---
   postgres:
     image: postgres:16-alpine
-    container_name: cleantrack-postgres
+    container_name: sipela-postgres
     restart: unless-stopped
     ports:
       - '5432:5432'
     environment:
-      POSTGRES_USER: cleantrack
-      POSTGRES_PASSWORD: cleantrack_pass
-      POSTGRES_DB: cleantrack_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: sipela_pass
+      POSTGRES_DB: sipela_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U cleantrack -d cleantrack_db']
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d sipela_db']
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # --- Redis 7 (untuk BullMQ queue — dipakai mulai Task 6) ---
+  # --- Redis 7 ---
   redis:
     image: redis:7-alpine
-    container_name: cleantrack-redis
+    container_name: sipela-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
